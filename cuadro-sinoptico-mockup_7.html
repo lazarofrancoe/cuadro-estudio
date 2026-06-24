@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cuadro · estudio asistido</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#fbfaf7;
+    --paper-2:#f3f1ea;
+    --ink:#1f2a44;
+    --ink-soft:#52607d;
+    --line:#9aa3b5;
+    --line-strong:#5b6378;
+    --accent:#e8842b;       /* el naranja del marcador */
+    --accent-soft:#fbe6cf;
+    --lvl1:#1f2a44;         /* Idea (nivel principal) */
+    --lvl2:#3b5bdb;         /* desglose · paso 1 */
+    --lvl3:#2f9e44;         /* desglose · paso 2 */
+    --lvl4:#9333ea;         /* desglose · paso 3 */
+    --col1:185px;           /* Idea */
+    --col2:230px;           /* desglose 1 */
+    --col3:230px;           /* desglose 2 */
+    --col4:230px;           /* desglose 3 */
+    --border:#e3e0d6;
+    --white:#ffffff;
+    --r:10px;
+    --shadow:0 1px 2px rgba(31,42,68,.06), 0 8px 24px rgba(31,42,68,.06);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    font-family:"Inter",system-ui,sans-serif;
+    color:var(--ink);
+    background:var(--paper);
+    -webkit-font-smoothing:antialiased;
+    display:flex;flex-direction:column;height:100vh;overflow:hidden;
+  }
+
+  /* ---------- Top bar ---------- */
+  .topbar{
+    display:flex;align-items:center;gap:14px;
+    padding:12px 20px;border-bottom:1px solid var(--border);
+    background:rgba(251,250,247,.85);backdrop-filter:blur(8px);
+    z-index:20;
+  }
+  .brand{display:flex;align-items:baseline;gap:10px}
+  .brand .mark{font-family:"Fraunces",serif;font-weight:600;font-size:19px;letter-spacing:-.01em}
+  .brand .mark b{color:var(--accent)}
+  .doc-title{
+    font-family:"Inter";font-size:14px;color:var(--ink-soft);
+    border:none;background:transparent;outline:none;min-width:160px;
+    border-bottom:1px dashed transparent;padding:3px 2px;
+  }
+  .doc-title:hover,.doc-title:focus{border-bottom-color:var(--line)}
+  .spacer{flex:1}
+  .btn{
+    font:inherit;font-size:13px;font-weight:500;cursor:pointer;
+    border:1px solid var(--border);background:var(--white);color:var(--ink);
+    padding:8px 14px;border-radius:8px;display:inline-flex;align-items:center;gap:7px;
+    transition:.15s;
+  }
+  .btn:hover{border-color:var(--line);transform:translateY(-1px)}
+  .btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .btn.primary:hover{background:#162038}
+  .btn svg{width:15px;height:15px}
+
+  /* ---------- Workspace ---------- */
+  .workspace{flex:1;display:flex;min-height:0}
+
+  /* source panel */
+  .source{
+    width:340px;flex-shrink:0;border-right:1px solid var(--border);
+    background:var(--paper-2);display:flex;flex-direction:column;
+    transition:margin-left .25s ease;
+  }
+  .source.collapsed{margin-left:-340px}
+  .source-head{
+    padding:14px 18px 8px;display:flex;align-items:center;justify-content:space-between;
+  }
+  .source-head h2{
+    font-family:"Inter";font-size:11px;font-weight:600;letter-spacing:.09em;
+    text-transform:uppercase;color:var(--ink-soft);margin:0;
+  }
+  .source-body{flex:1;overflow:auto;padding:0 18px 18px}
+  .source textarea{
+    width:100%;min-height:240px;resize:vertical;border:1px solid var(--border);
+    border-radius:var(--r);background:var(--white);padding:12px;
+    font-family:"Inter";font-size:13px;line-height:1.55;color:var(--ink);outline:none;
+  }
+  .source textarea:focus{border-color:var(--line)}
+  .source .hint{font-size:11.5px;color:var(--ink-soft);margin:10px 2px 0;line-height:1.5}
+  .gen-row{padding:12px 18px;border-top:1px solid var(--border)}
+  .gen-row .btn{width:100%;justify-content:center}
+
+  /* canvas */
+  .canvas-wrap{flex:1;position:relative;min-width:0}
+  .toolbar-canvas{
+    position:absolute;top:0;left:0;right:0;z-index:10;
+    display:flex;align-items:center;gap:8px;padding:10px 16px;
+    pointer-events:none;
+  }
+  .toolbar-canvas .btn{pointer-events:auto;background:rgba(255,255,255,.9)}
+  .legend{
+    pointer-events:auto;margin-left:auto;display:flex;align-items:center;gap:7px;
+    font-size:11.5px;color:var(--ink-soft);background:rgba(255,255,255,.9);
+    border:1px solid var(--border);border-radius:8px;padding:6px 10px;
+  }
+  .legend .swatch{width:13px;height:13px;border-radius:3px;background:var(--accent-soft);border:1px solid var(--accent)}
+  .legend .lvl-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0}
+  .legend .arrow{color:var(--line);margin:0 -2px}
+  .legend .divider{width:1px;height:14px;background:var(--border);margin:0 4px}
+  .legend .muted{color:var(--line);font-size:11px}
+  .canvas{
+    position:absolute;inset:0;overflow:auto;padding:64px 56px 56px;
+  }
+  .canvas-inner{display:inline-block;min-width:100%;padding-bottom:40px}
+
+  /* ---------- Tree ---------- */
+  .node{display:flex;align-items:center}
+  .self-row{position:relative;display:flex;align-items:center}
+  .label{
+    font-size:13.5px;line-height:1.4;color:var(--ink);
+    background:var(--white);border:1px solid transparent;border-left:3px solid var(--line);
+    border-radius:7px;
+    padding:6px 11px 6px 12px;outline:none;cursor:text;
+    transition:border-color .12s, background .12s;white-space:normal;
+  }
+  .self-row:hover .label{border-top-color:var(--border);border-right-color:var(--border);border-bottom-color:var(--border)}
+  .label:focus{border-top-color:var(--line);border-right-color:var(--line);border-bottom-color:var(--line);box-shadow:0 0 0 3px rgba(154,163,181,.18)}
+  .label.hl{background:var(--accent-soft);border-top-color:var(--accent);border-right-color:var(--accent);border-bottom-color:var(--accent)}
+  .node.root > .self-row > .label{
+    font-family:"Fraunces",serif;font-size:16px;font-weight:600;
+    background:var(--ink);color:#fff;border-color:var(--ink);padding:9px 15px;
+  }
+  .node.lvl1 > .self-row > .label{font-weight:600;font-size:14.5px;color:var(--ink);width:var(--col1);border-left-color:var(--lvl1)}
+  .node.lvl2 > .self-row > .label{font-weight:600;font-size:13.5px;color:var(--ink);width:var(--col2);border-left-color:var(--lvl2)}
+  .node.lvl3 > .self-row > .label{font-weight:500;font-size:13px;color:var(--ink);width:var(--col3);border-left-color:var(--lvl3)}
+  .node.lvl4 > .self-row > .label{font-weight:400;font-size:12.5px;color:var(--ink-soft);width:var(--col4);border-left-color:var(--lvl4)}
+
+  .tools button.off{opacity:.32;cursor:not-allowed}
+  .tools button.off:hover{background:transparent;color:#cdd4e2}
+
+  /* chevron */
+  .chev{
+    width:18px;height:18px;flex-shrink:0;margin-right:-2px;margin-left:2px;
+    border:none;background:transparent;cursor:pointer;color:var(--line);
+    display:flex;align-items:center;justify-content:center;border-radius:4px;
+    opacity:0;transition:.12s;
+  }
+  .self-row:hover .chev{opacity:1}
+  .chev.leaf{visibility:hidden;pointer-events:none}
+  .chev:hover{background:var(--paper-2);color:var(--ink)}
+  .chev svg{width:13px;height:13px;transition:transform .15s}
+  .node.collapsed .chev svg{transform:rotate(-90deg)}
+
+  /* per-node toolbar */
+  .tools{
+    position:absolute;left:0;top:-30px;display:none;gap:2px;
+    background:var(--ink);border-radius:7px;padding:3px;box-shadow:var(--shadow);z-index:30;
+  }
+  .self-row:hover .tools{display:flex}
+  .tools button{
+    border:none;background:transparent;color:#cdd4e2;cursor:pointer;
+    width:26px;height:26px;border-radius:5px;display:flex;align-items:center;justify-content:center;
+  }
+  .tools button:hover{background:rgba(255,255,255,.14);color:#fff}
+  .tools button.acc:hover{color:var(--accent)}
+  .tools button svg{width:14px;height:14px}
+  .tools .sep{width:1px;background:rgba(255,255,255,.16);margin:3px 2px}
+
+  /* branch + connector */
+  .branch{display:flex;align-items:center}
+  .conn{flex-shrink:0;align-self:stretch;position:relative;width:34px}
+  .conn svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+  .kids{display:flex;flex-direction:column;gap:9px}
+  .node.collapsed > .branch{display:none}
+
+  /* IA menu */
+  .ia-menu{
+    position:absolute;z-index:50;background:var(--white);border:1px solid var(--border);
+    border-radius:10px;box-shadow:var(--shadow);padding:6px;min-width:188px;display:none;
+  }
+  .ia-menu.open{display:block}
+  .ia-menu .ia-head{
+    font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);
+    padding:5px 9px 7px;display:flex;align-items:center;gap:6px;
+  }
+  .ia-menu button{
+    display:flex;width:100%;align-items:center;gap:9px;border:none;background:transparent;
+    font:inherit;font-size:13px;color:var(--ink);padding:8px 9px;border-radius:7px;cursor:pointer;text-align:left;
+  }
+  .ia-menu button:hover{background:var(--paper-2)}
+  .ia-menu button span.k{margin-left:auto;font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--line)}
+
+  /* modal */
+  .overlay{
+    position:fixed;inset:0;background:rgba(31,42,68,.34);backdrop-filter:blur(2px);
+    display:none;align-items:center;justify-content:center;z-index:100;
+  }
+  .overlay.open{display:flex}
+  .modal{
+    width:560px;max-width:92vw;background:var(--paper);border-radius:16px;
+    box-shadow:0 30px 80px rgba(31,42,68,.3);overflow:hidden;
+  }
+  .modal-head{padding:20px 22px 4px}
+  .modal-head h3{font-family:"Fraunces",serif;font-weight:600;font-size:19px;margin:0 0 4px}
+  .modal-head p{font-size:13px;color:var(--ink-soft);margin:0;line-height:1.5}
+  .modal-body{padding:14px 22px 4px}
+  .modal-body textarea{
+    width:100%;height:200px;resize:vertical;border:1px solid var(--border);border-radius:var(--r);
+    padding:13px;font-family:"Inter";font-size:13.5px;line-height:1.55;outline:none;background:var(--white);
+  }
+  .modal-body textarea:focus{border-color:var(--line)}
+  .modal-foot{padding:14px 22px 20px;display:flex;gap:10px;justify-content:flex-end;align-items:center}
+  .modal-foot .note{margin-right:auto;font-size:11.5px;color:var(--line)}
+  .modal-foot .spacer{flex:1}
+
+  /* selector de cuadros */
+  .docs-picker{position:relative}
+  .docs-picker .caret{width:13px;height:13px;margin-left:-2px}
+  .docs-menu{
+    position:absolute;top:calc(100% + 6px);left:0;z-index:60;display:none;
+    background:var(--white);border:1px solid var(--border);border-radius:10px;
+    box-shadow:var(--shadow);padding:6px;min-width:260px;max-height:60vh;overflow:auto;
+  }
+  .docs-menu.open{display:block}
+  .docs-menu .doc-item{
+    display:flex;align-items:center;gap:8px;padding:8px 9px;border-radius:7px;cursor:pointer;font-size:13px;
+  }
+  .docs-menu .doc-item:hover{background:var(--paper-2)}
+  .docs-menu .doc-item.active{background:var(--paper-2);font-weight:600}
+  .docs-menu .doc-item .nm{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .docs-menu .doc-item .del{
+    border:none;background:transparent;color:var(--line);cursor:pointer;width:22px;height:22px;
+    border-radius:5px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .docs-menu .doc-item .del:hover{background:#f3d9d9;color:#b13b3b}
+  .docs-menu .doc-new{
+    display:flex;align-items:center;gap:8px;width:100%;border:none;background:transparent;
+    font:inherit;font-size:13px;color:var(--ink);padding:8px 9px;border-radius:7px;cursor:pointer;
+    border-top:1px solid var(--border);margin-top:4px;
+  }
+  .docs-menu .doc-new:hover{background:var(--paper-2)}
+
+  /* toast */
+  .toast{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:var(--ink);color:#fff;font-size:13px;padding:10px 16px;border-radius:9px;
+    box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:.2s;z-index:200;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .spin{width:15px;height:15px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:sp .6s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+
+  /* ---------- Print ---------- */
+  @media print{
+    @page{margin:14mm;size:landscape}
+    .topbar,.source,.toolbar-canvas,.tools,.chev,.legend,.ia-menu,.overlay{display:none !important}
+    body,.canvas{overflow:visible !important}
+    .canvas{position:static;padding:0}
+    .workspace{display:block;height:auto}
+    .label{border-color:#000 !important;background:#fff !important;color:#000 !important}
+    .label.hl{background:#fff !important;outline:2px solid #000;font-weight:600}
+    .node.root > .self-row > .label{background:#000 !important;color:#fff !important}
+    .conn svg path{stroke:#000 !important}
+  }
+</style>
+</head>
+<body>
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="brand">
+      <span class="mark">Cuadro<b>.</b></span>
+    </div>
+    <div class="docs-picker">
+      <button class="btn" id="docsBtn" title="Mis cuadros">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18M3 12h18M3 17h12"/></svg>
+        Mis cuadros
+        <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div class="docs-menu" id="docsMenu"></div>
+    </div>
+    <input class="doc-title" id="docTitle" value="Freud — Complicidad y reproche (Dora)" />
+    <div class="spacer"></div>
+    <button class="btn" id="toggleSource" title="Mostrar/ocultar texto">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h10M4 18h7"/></svg>
+      Texto
+    </button>
+    <button class="btn primary" id="openGen">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg>
+      Importar
+    </button>
+    <button class="btn" id="printBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-2M6 14h12v7H6z"/></svg>
+      Imprimir
+    </button>
+  </div>
+
+  <!-- WORKSPACE -->
+  <div class="workspace">
+    <!-- SOURCE -->
+    <aside class="source" id="sourcePanel">
+      <div class="source-head">
+        <h2>Texto fuente</h2>
+      </div>
+      <div class="source-body">
+        <textarea id="sourceText" placeholder="Pegá acá el texto que estás leyendo…">El presente material recoge las escenas traumáticas del caso Dora. La primera, a los catorce años, ocurre cuando el Sr. K hace que las empleadas se retiren del negocio y consigue que Dora suba sola. La acorrala en la escalera y le da un beso. Dora sale corriendo. Como secuela, la paciente desarrolla tres síntomas y, más tarde, una fobia que la defiende de revivir lo traumático…</textarea>
+        <p class="hint">Refinás el cuadro directamente sobre las cajas de la derecha. La IA solo bocetea: el criterio es tuyo.</p>
+      </div>
+      <div class="gen-row">
+        <button class="btn primary" id="openGen2">Importar desde tu IA</button>
+      </div>
+    </aside>
+
+    <!-- CANVAS -->
+    <div class="canvas-wrap">
+      <div class="toolbar-canvas">
+        <button class="btn" id="addRootChild">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          Rama
+        </button>
+        <button class="btn" id="expandAll">Expandir todo</button>
+        <button class="btn" id="collapseAll">Colapsar</button>
+        <div class="legend">
+          <span class="lvl-dot" style="background:var(--lvl1)"></span>Idea
+          <span class="divider"></span>
+          <span class="muted">desglose</span>
+          <span class="lvl-dot" style="background:var(--lvl2)"></span>
+          <span class="arrow">›</span>
+          <span class="lvl-dot" style="background:var(--lvl3)"></span>
+          <span class="arrow">›</span>
+          <span class="lvl-dot" style="background:var(--lvl4)"></span>
+          <span class="divider"></span>
+          <span class="swatch"></span>destacado
+        </div>
+      </div>
+      <div class="canvas" id="canvas">
+        <div class="canvas-inner" id="tree"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- IA MENU -->
+  <div class="ia-menu" id="iaMenu">
+    <div class="ia-head">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#e8842b" stroke-width="2"><path d="M12 3v3m0 12v3M3 12h3m12 0h3"/></svg>
+      Asistencia IA · nodo
+    </div>
+    <button data-ia="expand">Expandir en subpuntos <span class="k">↳</span></button>
+    <button data-ia="split">Dividir en dos <span class="k">⇆</span></button>
+    <button data-ia="short">Acortar redacción <span class="k">–</span></button>
+    <button data-ia="reword">Reformular <span class="k">~</span></button>
+  </div>
+
+  <!-- IMPORT / EXPORT MODAL -->
+  <div class="overlay" id="overlay">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>Importar / Exportar</h3>
+        <p>Pegá en tu IA (ChatGPT, Claude, etc.) el prompt + el texto que estás leyendo. Copiá la lista que te devuelve y pegala acá abajo. Importar reemplaza el cuadro actual.</p>
+      </div>
+      <div class="modal-body">
+        <button class="btn" id="copyPrompt" style="margin-bottom:10px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M9 9h10v10H9zM5 15H4V4h11v1"/></svg>
+          Copiar prompt para la IA
+        </button>
+        <textarea id="genText" placeholder="Pegá acá la lista que te devolvió la IA (0/1/2/3… o JSON)…"></textarea>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" id="doExport" title="Vuelca el cuadro actual como texto, para guardarlo o compartirlo">Exportar actual</button>
+        <span class="spacer"></span>
+        <button class="btn" id="cancelGen">Cancelar</button>
+        <button class="btn primary" id="runGen">Importar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+/* ---------------- estado ---------------- */
+let uid = 0;
+const nid = () => 'n' + (++uid);
+
+const MAX_DEPTH = 4;   // Tema(0) → Idea(1) → desglose hasta 3 pasos (2,3,4)
+const LEVEL_NAMES = {1:'Idea', 2:'Desglose · paso 1', 3:'Desglose · paso 2', 4:'Desglose · paso 3'};
+
+function getDepth(id, root = tree, d = 0){
+  if(root.id === id) return d;
+  for(const c of root.children){ const r = getDepth(id, c, d+1); if(r >= 0) return r; }
+  return -1;
+}
+
+function n(text, children = [], hl = false){
+  return { id: nid(), text, hl, collapsed:false, children };
+}
+
+let tree;   // árbol del cuadro actual (lo setea loadDocs)
+
+function sampleTree(){
+  uid = 0;
+  return n("Complicidad, espejos y circuitos de reproche", [
+    n("Los autorreproches y la complicidad", [
+      n("Los reproches que el enfermo dirige al exterior", [
+        n("Encubren autorreproches de idéntico contenido", [
+          n("Ej. niños: «vos sos el mentiroso», en realidad es él"),
+        ]),
+      ]),
+      n("Dora acusa al padre de insincero y falso", [
+        n("De entregarla al Sr. K como objeto de cambio", [
+          n("Para facilitar su romance con la Sra. K"),
+          n("Se llevaba a los hijos para que ellos se vieran"),
+        ]),
+      ]),
+      n("La verdad icc: Dora hizo lo mismo", [
+        n("Durante años los cubrió, miraba para otro lado", [
+          n("Que la corteje y le haga regalos"),
+        ]),
+      ]),
+      n("El beneficio: poder quedarse sola con el Sr. K"),
+      n("El pacto de complicidad viene bien", [
+        n("Hasta la escena del lago", [
+          n("Ahí se rompe y Dora empieza con los reproches"),
+        ]),
+      ]),
+    ], true),
+    n("Pacto de complicidad, objeto de intercambio", [
+      n("Padre entregaba a Dora para quedarse con el Sr. K"),
+      n("Si el Sr. K se quejaba de que salía con su mujer", [
+        n("Se perdía la compañía de Dora"),
+      ]),
+      n("Dora usaba a los hijos", [
+        n("Para estar cerca del Sr. K", [
+          n("Perdía la compañía de la Sra. K"),
+        ]),
+      ]),
+    ]),
+    n("Identificaciones y síntomas de copia", [
+      n("El síntoma histérico copia", [
+        n("Porque encuentra en otro su posición subjetiva", [
+          n("Enfermó de la panza al enterarse"),
+        ]),
+      ], true),
+      n("Es un síntoma de simulación por envidia"),
+      n("La tos y afonía de Dora duraban 3–5 semanas", [
+        n("Tiempo en que el Sr. K se ausentaba por negocios"),
+      ]),
+    ]),
+  ]);
+}
+
+/* ---------------- render ---------------- */
+const treeEl = document.getElementById('tree');
+
+function render(){
+  treeEl.innerHTML = '';
+  treeEl.appendChild(renderNode(tree, 0));
+  requestAnimationFrame(drawAllConnectors);
+  persist();
+}
+
+function renderNode(node, depth){
+  const maxed = depth >= MAX_DEPTH;
+  const wrap = document.createElement('div');
+  wrap.className = 'node'
+    + (depth===0 ? ' root' : '')
+    + (depth>=1 ? ' lvl'+Math.min(depth,4) : '')
+    + (node.collapsed ? ' collapsed' : '');
+  wrap.dataset.id = node.id;
+
+  const selfRow = document.createElement('div');
+  selfRow.className = 'self-row';
+
+  // chevron (siempre presente para reservar el lugar y alinear columnas)
+  const chev = document.createElement('button');
+  chev.className = 'chev' + (node.children.length ? '' : ' leaf');
+  chev.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6"/></svg>';
+  if(node.children.length){
+    chev.onclick = (e)=>{ e.stopPropagation(); node.collapsed = !node.collapsed; render(); };
+  }
+  selfRow.appendChild(chev);
+
+  // label editable
+  const label = document.createElement('div');
+  label.className = 'label' + (node.hl?' hl':'');
+  label.contentEditable = depth!==0 ? 'true' : 'false';
+  label.spellcheck = false;
+  if(depth>=1) label.title = LEVEL_NAMES[Math.min(depth,4)];
+  label.textContent = node.text;
+  label.addEventListener('blur', ()=>{ node.text = label.textContent.trim() || '—'; drawAllConnectors(); persist(); });
+  label.addEventListener('keydown', (e)=>{
+    if(e.key==='Enter'){ e.preventDefault(); label.blur();
+      if(depth>0){ addSibling(node); } }
+    if(e.key==='Tab'){ e.preventDefault(); label.blur(); if(!maxed) addChild(node); }
+  });
+  selfRow.appendChild(label);
+
+  // toolbar
+  if(depth!==0 || true){
+    const tools = document.createElement('div');
+    tools.className = 'tools';
+    tools.innerHTML = `
+      ${depth>0?tbtn('sib','Hermano (Enter)','<path d="M12 5v14M5 12h14"/>'):''}
+      ${tbtn('child', maxed?'Nivel máximo: 3 niveles':'Desglosar (Tab)','<path d="M8 4v8a4 4 0 0 0 4 4h6M14 12l4 4-4 4"/>','', maxed)}
+      <span class="sep"></span>
+      ${tbtn('hl','Destacar','<path d="M12 2l2.9 6.3L22 9l-5 4.7L18.2 21 12 17.5 5.8 21 7 13.7 2 9l7.1-.7z"/>','acc')}
+      ${tbtn('ia','IA','<path d="M12 3v3m0 12v3M3 12h3m12 0h3M5.6 5.6l2.1 2.1m8.6 8.6l2.1 2.1"/>')}
+      ${depth>0?'<span class="sep"></span>'+tbtn('del','Borrar','<path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/>'):''}
+    `;
+    tools.querySelectorAll('button').forEach(b=>{
+      b.onclick=(e)=>{ e.stopPropagation(); handleTool(b.dataset.act, node, b); };
+    });
+    selfRow.appendChild(tools);
+  }
+
+  wrap.appendChild(selfRow);
+
+  // children
+  if(node.children.length){
+    const branch = document.createElement('div');
+    branch.className = 'branch';
+    const conn = document.createElement('div');
+    conn.className = 'conn';
+    conn.innerHTML = '<svg preserveAspectRatio="none"></svg>';
+    const kids = document.createElement('div');
+    kids.className = 'kids';
+    node.children.forEach(c => kids.appendChild(renderNode(c, depth+1)));
+    branch.appendChild(conn);
+    branch.appendChild(kids);
+    wrap.appendChild(branch);
+  }
+  return wrap;
+}
+
+function tbtn(act,title,path,cls='',off=false){
+  return `<button class="${cls}${off?' off':''}" data-act="${act}" title="${title}"${off?' disabled':''}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${path}</svg></button>`;
+}
+
+/* ---------------- conectores (corchetes) ---------------- */
+function drawAllConnectors(){
+  treeEl.querySelectorAll('.node').forEach(nodeEl=>{
+    const branch = nodeEl.querySelector(':scope > .branch');
+    if(!branch) return;
+    const conn = branch.querySelector('.conn');
+    const kids = branch.querySelector('.kids');
+    const svg = conn.querySelector('svg');
+    const directChildren = [...kids.children];
+    const wrapRect = conn.getBoundingClientRect();
+    const W = wrapRect.width, H = wrapRect.height;
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+
+    const sx = W * 0.6;                 // posición del lomo vertical
+    const centers = directChildren.map(ch=>{
+      const sr = ch.querySelector(':scope > .self-row .label') || ch.querySelector(':scope > .self-row');
+      const r = sr.getBoundingClientRect();
+      return (r.top + r.height/2) - wrapRect.top;
+    });
+    const first = centers[0], last = centers[centers.length-1];
+    const mid = H/2;
+
+    let d = '';
+    // stub padre -> lomo
+    d += `M 0 ${mid} L ${sx} ${mid} `;
+    // lomo vertical
+    if(centers.length>1) d += `M ${sx} ${first} L ${sx} ${last} `;
+    // ticks a cada hijo
+    centers.forEach(cy => { d += `M ${sx} ${cy} L ${W} ${cy} `; });
+
+    svg.innerHTML = `<path d="${d}" fill="none" stroke="var(--line)" stroke-width="1.4" stroke-linecap="round" vector-effect="non-scaling-stroke"/>`;
+  });
+}
+
+/* ---------------- mutaciones ---------------- */
+function findParent(root, id, parent=null){
+  if(root.id===id) return parent;
+  for(const c of root.children){ const r=findParent(c,id,root); if(r!==undefined) return r; }
+  return undefined;
+}
+function addChild(node){ if(getDepth(node.id) >= MAX_DEPTH) return; node.collapsed=false; const c=n("Nuevo punto"); node.children.push(c); render(); focusNode(c.id); }
+function addSibling(node){
+  const p=findParent(tree,node.id); if(!p) return;
+  const i=p.children.indexOf(node); const c=n("Nuevo punto");
+  p.children.splice(i+1,0,c); render(); focusNode(c.id);
+}
+function delNode(node){
+  const p=findParent(tree,node.id); if(!p) return;
+  p.children=p.children.filter(x=>x.id!==node.id); render();
+}
+function focusNode(id){
+  requestAnimationFrame(()=>{
+    const el=treeEl.querySelector(`[data-id="${id}"] > .self-row > .label`);
+    if(el){ el.focus(); document.execCommand('selectAll',false,null); }
+  });
+}
+
+/* ---------------- toolbar handler ---------------- */
+function handleTool(act, node, btnEl){
+  if(act==='sib') addSibling(node);
+  else if(act==='child') addChild(node);
+  else if(act==='hl'){ node.hl=!node.hl; render(); }
+  else if(act==='del') delNode(node);
+  else if(act==='ia') openIaMenu(node, btnEl);
+}
+
+/* ---------------- IA (mock) ---------------- */
+const iaMenu=document.getElementById('iaMenu');
+let iaTarget=null;
+function openIaMenu(node, btnEl){
+  iaTarget=node;
+  const maxed = getDepth(node.id) >= MAX_DEPTH;
+  iaMenu.querySelector('[data-ia="expand"]').style.display = maxed ? 'none' : 'flex';
+  const r=btnEl.getBoundingClientRect();
+  iaMenu.style.left=Math.min(r.left, window.innerWidth-210)+'px';
+  iaMenu.style.top=(r.bottom+6)+'px';
+  iaMenu.classList.add('open');
+}
+function closeIaMenu(){ iaMenu.classList.remove('open'); iaTarget=null; }
+document.addEventListener('click',(e)=>{
+  if(!iaMenu.contains(e.target) && !e.target.closest('[data-act="ia"]')) closeIaMenu();
+});
+iaMenu.querySelectorAll('button').forEach(b=>{
+  b.onclick=()=>{ applyIa(b.dataset.ia, iaTarget); closeIaMenu(); };
+});
+function applyIa(kind, node){
+  if(!node) return;
+  if(kind==='expand'){
+    if(getDepth(node.id) >= MAX_DEPTH) return;
+    node.collapsed=false;
+    node.children.push(n("Subpunto sugerido"), n("Subpunto sugerido"));
+  } else if(kind==='split'){
+    const p=findParent(tree,node.id); if(!p) return;
+    const parts = node.text.split(/[:;.]| - /).map(s=>s.trim()).filter(Boolean);
+    const i=p.children.indexOf(node);
+    if(parts.length>=2){ node.text=parts[0]; p.children.splice(i+1,0,n(parts.slice(1).join(' '))); }
+    else p.children.splice(i+1,0,n("Segunda parte"));
+  } else if(kind==='short'){
+    const w=node.text.split(' '); node.text = w.slice(0, Math.max(3, Math.ceil(w.length*0.6))).join(' ');
+  } else if(kind==='reword'){
+    node.text = '↳ ' + node.text;
+  }
+  render();
+}
+
+/* ---------------- importar / exportar ---------------- */
+const overlay=document.getElementById('overlay');
+const genText=document.getElementById('genText');
+function openGen(){ overlay.classList.add('open'); }
+function closeGen(){ overlay.classList.remove('open'); }
+document.getElementById('openGen').onclick=openGen;
+document.getElementById('openGen2').onclick=openGen;
+document.getElementById('cancelGen').onclick=closeGen;
+overlay.addEventListener('click',(e)=>{ if(e.target===overlay) closeGen(); });
+
+const PROMPT = `Sos un asistente de estudio. A partir del TEXTO que te paso, armá un cuadro sinóptico como una LISTA DE LÍNEAS. Cada línea empieza con un NÚMERO que indica su nivel, un espacio, y el texto.
+
+Niveles:
+0 = el TEMA del texto (una sola línea, va primero)
+1 = una IDEA principal (entre 3 y 5)
+2, 3, 4 = el desglose de esa idea, paso a paso
+
+Reglas:
+- Empezá SIEMPRE cada línea con el número de nivel y un espacio. NO uses sangrías ni viñetas.
+- Una línea por punto, lo más conciso posible.
+- Bajá como máximo a nivel 4 (3 pasos debajo de cada idea). Está bien que unas ramas sean más profundas que otras.
+- Cada punto desarrolla al de nivel anterior: qué quiere decir, por qué, un ejemplo o su consecuencia.
+
+Ejemplo:
+0 Complicidad y reproche
+1 Los autorreproches
+2 Encubren autorreproches de igual contenido
+3 Ej: el chico dice "vos mentís" y miente él
+1 El pacto de complicidad
+
+Devolvé SOLO la lista, sin texto adicional.
+
+TEXTO:
+`;
+
+function toast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('show'),1800);
+}
+function copyText(txt, msg){
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(()=>toast(msg)).catch(()=>fallbackCopy(txt,msg));
+  } else fallbackCopy(txt,msg);
+}
+function fallbackCopy(txt,msg){
+  const ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta);
+  ta.select(); try{document.execCommand('copy');}catch(e){} document.body.removeChild(ta); toast(msg);
+}
+document.getElementById('copyPrompt').onclick=()=>copyText(PROMPT, 'Prompt copiado — pegalo en tu IA con el texto');
+
+/* parser: lista con sangrías -> árbol (fallback, compara sangría relativa) */
+function parseOutline(text){
+  const raw = text.replace(/\t/g,'  ').split('\n').filter(l=>l.trim().length);
+  if(!raw.length) return null;
+  const indentOf = l => l.match(/^ */)[0].length;
+  const clean = l => l.trim().replace(/^[-*•·]\s+/,'').replace(/^\d+[.)]\s+/,'');
+  const root = n(clean(raw[0]));
+  const stack = [{node:root, indent:indentOf(raw[0])}];
+  for(let i=1;i<raw.length;i++){
+    const ind = indentOf(raw[i]);
+    while(stack.length>1 && stack[stack.length-1].indent >= ind) stack.pop();
+    const node = n(clean(raw[i]));
+    stack[stack.length-1].node.children.push(node);
+    stack.push({node, indent:ind});
+  }
+  return root;
+}
+/* parser: JSON {text, children:[...]} -> árbol (tolera fences y preámbulo) */
+function fromJSON(text){
+  let s = text.trim().replace(/^```[a-z]*\s*/i,'').replace(/```\s*$/,'').trim();
+  const a = s.indexOf('{'), b = s.lastIndexOf('}');
+  if(a<0 || b<0) return null;
+  let obj; try { obj = JSON.parse(s.slice(a,b+1)); } catch(e){ return null; }
+  const conv = o => n(String(o.text||o.title||o.name||'—'), Array.isArray(o.children)?o.children.map(conv):[]);
+  return (obj && (obj.text||obj.children)) ? conv(obj) : null;
+}
+/* parser: lista numerada por nivel "2 texto" -> árbol (no depende de espacios) */
+function parseLevels(text){
+  const rows = text.split('\n').map(l=>l.trim()).filter(Boolean)
+    .map(l=>{ const m=/^(\d+)[.)]?\s+(.+)$/.exec(l); return m?{depth:+m[1], text:m[2].trim()}:null; })
+    .filter(Boolean);
+  if(!rows.length) return null;
+  const minD = Math.min(...rows.map(r=>r.depth));
+  let root, body;
+  if(rows[0].depth === minD){ root = n(rows[0].text); body = rows.slice(1); }
+  else { root = n('Tema'); body = rows; }
+  const lastAt = {}; lastAt[minD] = root;
+  for(const r of body){
+    const node = n(r.text);
+    let p = null;
+    for(let d=r.depth-1; d>=minD-1; d--){ if(lastAt[d]){ p=lastAt[d]; break; } }
+    (p||root).children.push(node);
+    lastAt[r.depth] = node;
+    Object.keys(lastAt).forEach(k=>{ if(+k>r.depth) delete lastAt[k]; });
+  }
+  return root;
+}
+/* orquestador: prueba JSON -> lista numerada -> sangrías */
+function importText(text){ return fromJSON(text) || parseLevels(text) || parseOutline(text); }
+
+/* serializer: árbol -> lista con sangrías (para exportar / backup) */
+function toOutline(node, depth=0){
+  let out = '  '.repeat(depth) + node.text + '\n';
+  for(const c of node.children) out += toOutline(c, depth+1);
+  return out;
+}
+
+document.getElementById('doExport').onclick=()=>{
+  const txt = toOutline(tree).trimEnd();
+  genText.value = txt;
+  copyText(txt, 'Cuadro actual copiado como texto');
+};
+document.getElementById('runGen').onclick=()=>{
+  const parsed = importText(genText.value);
+  if(!parsed){ toast('Pegá primero la lista que te dio la IA'); return; }
+  tree = parsed;
+  const d = currentDoc();
+  if(d){
+    d.tree = tree;
+    if(!docTitle.value.trim() || docTitle.value==='Cuadro sin título'){ d.name = tree.text; docTitle.value = tree.text; }
+  }
+  render(); renderDocsMenu(); closeGen();
+  toast('Cuadro importado');
+};
+
+/* ---------------- otros controles ---------------- */
+document.getElementById('toggleSource').onclick=()=>document.getElementById('sourcePanel').classList.toggle('collapsed');
+document.getElementById('printBtn').onclick=()=>window.print();
+document.getElementById('addRootChild').onclick=()=>addChild(tree);
+function setCollapsedAll(v){ (function walk(x){ if(x.children.length){x.collapsed=v; x.children.forEach(walk);} })(tree); render(); }
+document.getElementById('expandAll').onclick=()=>setCollapsedAll(false);
+document.getElementById('collapseAll').onclick=()=>setCollapsedAll(true);
+window.addEventListener('resize',()=>requestAnimationFrame(drawAllConnectors));
+
+/* ---------------- persistencia (localStorage) ---------------- */
+const STORE_KEY = 'cuadro.docs.v1';
+let docs = [];          // [{id, name, tree}]
+let currentId = null;
+const docTitle = document.getElementById('docTitle');
+
+function currentDoc(){ return docs.find(d=>d.id===currentId) || null; }
+function uidFromId(id){ const m=/^n(\d+)$/.exec(id||''); return m?+m[1]:0; }
+function bumpUid(node){ if(!node) return; uid = Math.max(uid, uidFromId(node.id)); (node.children||[]).forEach(bumpUid); }
+
+function persist(){
+  const d = currentDoc();
+  if(d){ d.tree = tree; d.name = (docTitle.value||'').trim() || 'Cuadro sin título'; }
+  try { localStorage.setItem(STORE_KEY, JSON.stringify({docs, currentId})); } catch(e){}
+}
+function loadDocs(){
+  let saved=null;
+  try { saved = JSON.parse(localStorage.getItem(STORE_KEY)); } catch(e){}
+  if(saved && Array.isArray(saved.docs) && saved.docs.length){
+    docs = saved.docs; currentId = saved.currentId || docs[0].id;
+  } else {
+    docs = [{ id:'doc'+Date.now(), name: docTitle.value || 'Ejemplo — caso Dora', tree: sampleTree() }];
+    currentId = docs[0].id;
+  }
+  docs.forEach(d=>bumpUid(d.tree));
+  const d = currentDoc() || docs[0];
+  currentId = d.id; tree = d.tree; docTitle.value = d.name;
+  renderDocsMenu();
+}
+function openDoc(id){
+  const d = docs.find(x=>x.id===id); if(!d) return;
+  currentId = id; tree = d.tree; docTitle.value = d.name;
+  renderDocsMenu(); render();
+}
+function newDoc(){
+  const d = { id:'doc'+Date.now(), name:'Cuadro sin título', tree: n('Tema nuevo', []) };
+  docs.push(d); openDoc(d.id); toast('Cuadro nuevo creado');
+}
+function deleteDoc(id){
+  const d = docs.find(x=>x.id===id); if(!d) return;
+  if(!confirm('¿Borrar «'+d.name+'»? No se puede deshacer.')) return;
+  docs = docs.filter(x=>x.id!==id);
+  if(currentId===id){ if(!docs.length) newDoc(); else openDoc(docs[0].id); }
+  else { renderDocsMenu(); persist(); }
+}
+
+/* menú de cuadros */
+const docsMenu = document.getElementById('docsMenu');
+function renderDocsMenu(){
+  docsMenu.innerHTML = '';
+  docs.forEach(d=>{
+    const row = document.createElement('div');
+    row.className = 'doc-item' + (d.id===currentId?' active':'');
+    row.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:15px;height:15px;flex-shrink:0;color:var(--line)"><path d="M4 4h11l5 5v11H4z"/></svg><span class="nm"></span><button class="del" title="Borrar">×</button>';
+    row.querySelector('.nm').textContent = d.name;
+    row.onclick = (e)=>{ if(e.target.closest('.del')) return; openDoc(d.id); docsMenu.classList.remove('open'); };
+    row.querySelector('.del').onclick = (e)=>{ e.stopPropagation(); deleteDoc(d.id); };
+    docsMenu.appendChild(row);
+  });
+  const add = document.createElement('button');
+  add.className = 'doc-new';
+  add.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M12 5v14M5 12h14"/></svg> Nuevo cuadro';
+  add.onclick = ()=>{ newDoc(); docsMenu.classList.remove('open'); };
+  docsMenu.appendChild(add);
+}
+document.getElementById('docsBtn').onclick=(e)=>{ e.stopPropagation(); docsMenu.classList.toggle('open'); };
+document.addEventListener('click',(e)=>{ if(!docsMenu.contains(e.target) && !e.target.closest('#docsBtn')) docsMenu.classList.remove('open'); });
+
+docTitle.addEventListener('input', ()=>{ const d=currentDoc(); if(d) d.name = docTitle.value; });
+docTitle.addEventListener('blur', ()=>{ renderDocsMenu(); persist(); });
+
+/* ---------------- init ---------------- */
+loadDocs();
+render();
+</script>
+</body>
+</html>
